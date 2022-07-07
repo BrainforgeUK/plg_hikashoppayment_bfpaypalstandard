@@ -94,64 +94,37 @@ $shippingAddressInfo = $paypalHelper->getAddressInfo('shipping');
             onApprove: function(data, actions) {
                 return actions.order.capture().then(function(orderData) {
 
-                    <?php
-                    if ($paypalHelper->plugin_params->debug)
-					{
-                        ?>
-                        console.log('Capture result', orderData, JSON.stringify(orderData, null, 2));
-                        <?php
-                    }
-                    ?>
+                    <?php echo $paypalHelper->consoleLog(array(
+                                            "'Capture result'", 'orderData', 'JSON.stringify(orderData, null, 2)')); ?>
 
                     <?php echo $paypalHelper->onOrderCaptureMessage(); ?>
 
-                    var xhttp = new XMLHttpRequest();
-
-                    xhttp.onreadystatechange = function () {
-                        if (this.readyState == 4) {
-                            switch (this.status) {
-                                case 200:
-                                    try {
-                                        var result = JSON.parse(this.responseText);
-                                        switch(result.status)
-                                        {
-                                            case '1':
-                                                document.getElementById('bfpaypalstandard-end').innerHTML = result.message;
-                                                break;
-                                            case '2':
-                                                window.location.href = result.url;
-                                                break;
-                                            default:
-                                                alert(this.responseText);
-                                                break;
-                                        }
-                                    }
-                                    catch(err) {
-                                        alert(err.message);
-                                    }
-                                    break;
-                                default:
-                                    alert(this.status + " : " + this.statusText);
-                                    break;
-                            }
+                    fetch('<?php echo $paypalHelper->getNotifyUrl('onApprove'); ?>' +
+                                                    "&result=" + JSON.stringify(orderData)
+                    ).then(function(res) {
+                        return res.json();
+                    }).then(function (result) {
+                        switch(result.status)
+                        {
+                            case '1':
+                                document.getElementById('bfpaypalstandard-end').innerHTML = result.message;
+                                break;
+                            case '2':
+                                window.location.href = result.url;
+                                break;
+                            default:
+                                alert(this.responseText);
+                                break;
                         }
-                    };
-
-                    xhttp.open("GET", "<?php echo $paypalHelper->getNotifyUrl('onApprove'); ?>" +
-                                            "&result=" + JSON.stringify(orderData), true);
-                    xhttp.send();
+                    }).catch(function (err) {
+						<?php echo $paypalHelper->consoleLog('err', 'PLG_BFPAYPALSTANDARD_PAYMENTERROR'); ?>
+                    })
+                    ;
                 });
             },
 
             onError: function(err) {
-				<?php
-				if ($paypalHelper->plugin_params->debug)
-				{
-                    ?>
-                    console.log(err);
-                    <?php
-                    }
-				?>
+				<?php echo $paypalHelper->consoleLog('err', 'PLG_BFPAYPALSTANDARD_PAYMENTERROR'); ?>
             }
         }).render('#paypal-button-container');
     }

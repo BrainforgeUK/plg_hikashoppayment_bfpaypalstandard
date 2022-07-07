@@ -88,7 +88,7 @@ class plgHikashoppaymentBfpaypalstandard extends hikashopPaymentPlugin
 		{
 			if ($usable_method->payment_type != $this->name) continue;
 
-			$this->app->setUserState('plhikashoppayment.bfpaypalstandard', null);
+			$this->app->setUserState('plghikashoppayment.bfpaypalstandard.secretkey', null);
 
 			if (empty($usable_method->payment_params->client_id) ||
 				empty($usable_method->payment_params->client_secret))
@@ -105,10 +105,12 @@ class plgHikashoppaymentBfpaypalstandard extends hikashopPaymentPlugin
 	 */
 	function onBeforeOrderCreate(&$order, &$do)
 	{
-		$cartOrder = $this->app->getUserState('bfpaypalstandard.cartorder');
+		$this->app->setUserState('plghikashoppayment.bfpaypalstandard.paypal_params', null);
+
+		$cartOrder = $this->app->getUserState('plghikashoppayment.bfpaypalstandard.cartorder');
 		if (!empty($cartOrder))
 		{
-			$this->app->setUserState('bfpaypalstandard.cartorder', null);
+			$this->app->setUserState('plghikashoppayment.bfpaypalstandard.cartorder', null);
 
 			if (!empty($cartOrder[$order->cart->cart_id]))
 			{
@@ -124,7 +126,8 @@ class plgHikashoppaymentBfpaypalstandard extends hikashopPaymentPlugin
 							$this->modifyOrder($prevOrder->order_id,
 								$this->plugin_params->invalid_status,
 								null,
-								$this->plugin_params->status_notif_email);
+								$this->plugin_params->status_notif_email,
+								$this->plugin_params);
 							break;
 						case $this->plugin_params->invalid_status:
 						default:
@@ -145,7 +148,7 @@ class plgHikashoppaymentBfpaypalstandard extends hikashopPaymentPlugin
 	 */
 	function onAfterOrderConfirm(&$order, &$methods, $method_id)
 	{
-		$this->app->setUserState('bfpaypalstandard.cartorder', array($order->cart->cart_id => $order->order_id));
+		$this->app->setUserState('plghikashoppayment.bfpaypalstandard.cartorder', array($order->cart->cart_id => $order->order_id));
 
 		$this->pluginParams($order->order_payment_id);
 
@@ -177,49 +180,59 @@ class plgHikashoppaymentBfpaypalstandard extends hikashopPaymentPlugin
 	 */
 	function onPaymentNotification(&$statuses)
 	{
-		$secretKey = $this->app->getUserState('plhikashoppayment.bfpaypalstandard');
+		$action = $this->app->input->getString('action');
+
+		$secretKey = $this->app->getUserState('plghikashoppayment.bfpaypalstandard.secretkey');
 		if (empty($secretKey))
 		{
-			$this->returnNotificationError('001');
+			switch($action)
+			{
+				case 'cancel':
+					break;
+				default:
+					$this->returnNotificationError('001');
+			}
 		}
-
-		$this->order = $this->getOrder($this->app->input->getInt('order_id', 0));
-		if (empty($this->order))
+		else
 		{
-			$this->returnNotificationError('002');
+			$this->order = $this->getOrder($this->app->input->getInt('order_id', 0));
+			if (empty($this->order))
+			{
+				$this->returnNotificationError('002');
+			}
+
+			$method_id = $this->app->input->getInt('notif_id', 0);
+			$this->pluginParams($method_id);
+			if(empty($this->plugin_params))
+			{
+				$this->returnNotificationError('003');
+			}
+
+			switch ($this->order->order_status)
+			{
+				case $this->plugin_params->order_status:
+					break;
+				default:
+					$this->returnNotificationError('004');
+			}
+
+			if($secretKey != $this->getSecretKey(false))
+			{
+				$this->returnNotificationError('005');
+			}
+			$this->app->setUserState('plghikashoppayment.bfpaypalstandard.secretkey', null);
+
+			if (password_verify(
+					$secretKey,
+					base64_decode($this->app->input->getBase64('key'))) !== true)
+			{
+				$this->returnNotificationError('006');
+			}
+
+			$this->app->setUserState('plghikashoppayment.bfpaypalstandard.cartorder', null);
 		}
 
-		$method_id = $this->app->input->getInt('notif_id', 0);
-		$this->pluginParams($method_id);
-		if(empty($this->plugin_params))
-		{
-			$this->returnNotificationError('003');
-		}
-
-		switch ($this->order->order_status)
-		{
-			case $this->plugin_params->order_status:
-				break;
-			default:
-				$this->returnNotificationError('004');
-		}
-
-		if($secretKey != $this->getSecretKey(false))
-		{
-			$this->returnNotificationError('005');
-		}
-		$this->app->setUserState('plhikashoppayment.bfpaypalstandard', null);
-
-		if (password_verify(
-				$secretKey,
-				base64_decode($this->app->input->getBase64('key'))) !== true)
-		{
-			$this->returnNotificationError('006');
-		}
-
-		$this->app->setUserState('bfpaypalstandard.cartorder', null);
-
-		switch($this->app->input->getString('action'))
+		switch($action)
 		{
 			case 'onApprove':
 				$result = $this->app->input->get('result', '', 'raw');
@@ -239,7 +252,8 @@ class plgHikashoppaymentBfpaypalstandard extends hikashopPaymentPlugin
 				$this->modifyOrder($this->order->order_id,
 					$this->plugin_params->paid_status,
 					$history,
-					$this->plugin_params->status_notif_email);
+					$this->plugin_params->status_notif_email,
+					$this->plugin_params);
 
 				$cartClass = hikashop_get('class.cart');
 				$cartClass->cleanCartFromSession(false, true);
@@ -266,13 +280,21 @@ class plgHikashoppaymentBfpaypalstandard extends hikashopPaymentPlugin
 				echo json_encode($output);
 				exit(0);
 
-			case 'onCancel':
-				$this->modifyOrder($this->order->order_id,
-					$this->plugin_params->invalid_status,
-					null,
-					$this->plugin_params->status_notif_email);
+			case 'cancel':
+				$this->app->setUserState('plghikashoppayment.bfpaypalstandard.secretkey', null);
+				$this->app->setUserState('plghikashoppayment.bfpaypalstandard.cartorder', null);
+				$this->app->setUserState('plghikashoppayment.bfpaypalstandard.paypal_params', null);
 
-				$this->app->enqueueMessage(Text::sprintf('PLG_BFPAYPALSTANDARD_ORDERCANCELLED', $this->order->order_number));
+				if (!empty($this->order->order_id))
+				{
+					$this->modifyOrder($this->order->order_id,
+						$this->plugin_params->invalid_status,
+						null,
+						$this->plugin_params->status_notif_email,
+						$this->plugin_params);
+
+					$this->app->enqueueMessage(Text::sprintf('PLG_BFPAYPALSTANDARD_ORDERCANCELLED', $this->order->order_number));
+				}
 
 				$this->app->redirect('index.php?option=com_hikashop&view=checkout&layout=show');
 
@@ -288,7 +310,7 @@ class plgHikashoppaymentBfpaypalstandard extends hikashopPaymentPlugin
 	 */
 	protected function returnNotificationError($errorCode)
 	{
-		$this->app->setUserState('plhikashoppayment.bfpaypalstandard', null);
+		$this->app->setUserState('plghikashoppayment.bfpaypalstandard.secretkey', null);
 
 		$history = new stdClass();
 		$history->data = Text::sprintf('PLG_BFPAYPALSTANDARD_NOTIFICATIONERROR', $errorCode);
@@ -299,7 +321,8 @@ class plgHikashoppaymentBfpaypalstandard extends hikashopPaymentPlugin
 			$this->modifyOrder($this->order->order_id,
 				$this->order->order_status,
 				$history,
-				$this->plugin_params->status_notif_email);
+				$this->plugin_params->status_notif_email,
+				$this->plugin_params);
 		}
 
 		die($history->data);
@@ -315,12 +338,25 @@ class plgHikashoppaymentBfpaypalstandard extends hikashopPaymentPlugin
 				if (is_array($data))
 				{
 					$transaction = $data['purchase_units'][0]['payments']['captures'][0];
-					$history->history_data = 'Transaction ' . $transaction['status'] . ' : ' . $transaction['id'] . '<br/>';
+					$history->history_data = Text::sprintf('PLG_BFPAYPALSTANDARD_ORDERHISTORY_TRANSACTIONID', $transaction['status'], $transaction['id']) . '<br/>';
 
-					// TODO - Add onclick display button, or read using browser source
-					$history->history_data .= '<textarea id="historydata-' . $key . '" readonly="readonly" style="display:none;">' .
-													htmlspecialchars(print_r($data, true)) .
-											  '</textarea>';
+					if ($transaction['final_capture'])
+					{
+						$history->history_data .= Text::_('PLG_BFPAYPALSTANDARD_ORDERHISTORY_TRANSACTIONFINAL') . '<br/>';
+					}
+
+					if (empty($this->plugin_params))
+					{
+						$order = $this->getOrder($history->history_order_id);
+						$this->pluginParams($order->order_payment_id);
+					}
+
+					if (!empty($this->plugin_params->debug))
+					{
+						$history->history_data .= '<textarea id="historydata-' . $key . '" readonly="readonly">' .
+							htmlspecialchars(print_r($data, true)) .
+							'</textarea>';
+					}
 				}
 			}
 		}
@@ -331,7 +367,7 @@ class plgHikashoppaymentBfpaypalstandard extends hikashopPaymentPlugin
 	 */
 	public function getSecretKey($hashed=true)
 	{
-		$key = $this->app->getUserState('plhikashoppayment.bfpaypalstandard');
+		$key = $this->app->getUserState('plghikashoppayment.bfpaypalstandard.secretkey');
 
 		if (empty($key))
 		{
@@ -345,7 +381,7 @@ class plgHikashoppaymentBfpaypalstandard extends hikashopPaymentPlugin
 
 			if ($hashed)
 			{
-				$this->app->setUserState('plhikashoppayment.bfpaypalstandard', $key);
+				$this->app->setUserState('plghikashoppayment.bfpaypalstandard.secretkey', $key);
 			}
 		}
 
@@ -379,8 +415,8 @@ class plgHikashoppaymentBfpaypalstandard extends hikashopPaymentPlugin
 			$values["format"] 			= "'html'";
 			$values["lang"] 			= "'en'";
 			$values["notif_payment"] 	= "'" . $this->name . "'";
-			$values["notif_id"] 		= '$_GET["pid"]';
-			$values["order_id"] 		= '$_GET["oid"]';
+			$values["notif_id"] 		= '@$_GET["pid"]';
+			$values["order_id"] 		= '@$_GET["oid"]';
 
 			foreach(array('GET', 'REQUEST') as $type)
 			{

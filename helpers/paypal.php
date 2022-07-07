@@ -30,14 +30,6 @@ class plgHikashoppaymentBfpaypalstandardHelper
 		$this->plugin 			= $plugin;
 		$this->plugin_params 	= $plugin->plugin_params;
 		$this->order 			= $plugin->order;
-
-		$this->paypal_params = new stdClass();
-		$this->paypal_params->userpwd    = $this->plugin_params->client_id . ':' . $this->plugin_params->client_secret;
-		$this->paypal_params->bnCode     = 'BrainforgeUK';
-		$this->paypal_params->customerId = "ORDER_USER_ID-" . $this->order->order_user_id;
-
-		$this->paypal_params->accessToken = $this->createToken();
-		$this->paypal_params->clientToken = $this->createClientToken();
 	}
 
 	/*
@@ -47,6 +39,23 @@ class plgHikashoppaymentBfpaypalstandardHelper
 		try
 		{
 			$paypalHelper = new plgHikashoppaymentBfpaypalstandardHelper($plugin);
+
+			$paypalHelper->paypal_params = $plugin->app->getUserState('plghikashoppayment.bfpaypalstandard.paypal_params');
+
+			if (empty($paypalHelper->paypal_params->status))
+			{
+				$paypalHelper->paypal_params = new stdClass();
+				$paypalHelper->paypal_params->userpwd    = $plugin->plugin_params->client_id . ':' . $plugin->plugin_params->client_secret;
+				$paypalHelper->paypal_params->bnCode     = 'BrainforgeUK';
+				$paypalHelper->paypal_params->customerId = "ORDER_USER_ID-" . $paypalHelper->order->order_user_id;
+
+				$paypalHelper->paypal_params->accessToken = $paypalHelper->createToken();
+				$paypalHelper->paypal_params->clientToken = $paypalHelper->createClientToken();
+
+				$paypalHelper->paypal_params->status = true;
+
+				$plugin->app->setUserState('plghikashoppayment.bfpaypalstandard.paypal_params', $paypalHelper->paypal_params);
+			}
 		}
 		catch (Exception $e)
 		{
@@ -296,5 +305,24 @@ class plgHikashoppaymentBfpaypalstandardHelper
 	public function getBrandName()
 	{
 		return $this->plugin->app->get('sitename');
+	}
+
+	/*
+	 */
+	public function consoleLog($args, $alert=null)
+	{
+		$result = [];
+
+		if (!empty($alert))
+		{
+			$result[] = 'alert("' . str_replace('"', '\\"', Text::_($alert)) .'");';
+		}
+
+		if ($this->plugin_params->debug)
+		{
+			$result[] = 'console.log(' . implode(',', (array)$args) . ');';
+		}
+
+		return implode("\n", $result);
 	}
 }
