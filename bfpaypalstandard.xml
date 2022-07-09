@@ -13,6 +13,8 @@
 	<files>
 		<filename plugin="bfpaypalstandard">bfpaypalstandard.php</filename>
 		<filename>bfpaypalstandard_end.php</filename>
+		<folder>fields</folder>
+		<folder>help</folder>
 		<folder>helpers</folder>
 		<folder>language</folder>
 	</files>
@@ -25,10 +27,24 @@
 	</params>
 
 	<config>
-		<fields name="params" addfieldpath="/components/com_hikashop/fields">
+		<fields name="params" >
 			<fieldset name="basic">
-				<field id="pluginoptions" name="pluginoptions" type="pluginoptions" label="hikashop"
-					   description="HikaShop options" />
+				<field
+						id="bfpaypalstandardhelp"
+						name="bfpaypalstandardhelp"
+						type="bfpaypalstandardhelp"
+						label="PLG_BFPAYPALSTANDARD_HELP_LABEL"
+						description="PLG_BFPAYPALSTANDARD_HELP_DESC"
+						addfieldpath="plugins/hikashoppayment/bfpaypalstandard/fields"
+				/>
+
+				<field id="pluginoptions"
+					   name="pluginoptions"
+					   type="pluginoptions"
+					   label="hikashop"
+					   description="HikaShop options"
+					   addfieldpath="/components/com_hikashop/fields"
+				/>
 			</fieldset>
 		</fields>
 	</config>
