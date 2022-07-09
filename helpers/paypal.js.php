@@ -51,7 +51,7 @@ $shippingAddressInfo = $paypalHelper->getAddressInfo('shipping');
 </div>
 
 <script src="https://www.paypal.com/sdk/js?<?php echo implode('&', $jsArgs);?>"
-        data-client-token=<?php echo $paypalHelper->paypal_params->clientToken; ?>
+        data-client-token="<?php echo $paypalHelper->paypal_params->clientToken; ?>"
 ></script>
 
 <script>
