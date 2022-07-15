@@ -66,11 +66,6 @@ $shippingAddressInfo = $paypalHelper->getAddressInfo('shipping');
                     application_context: {
                         brand_name: "<?php echo $paypalHelper->getBrandName(); ?>",
                         shipping_preference: "<?php echo empty($shippingAddressInfo) ? 'NO_SHIPPING' : 'SET_PROVIDED_ADDRESS'; ?>",
-                        /*
-                        locale: "en-US",
-                        landing_page: "BILLING",
-                        user_action: "CONTINUE"
-                        */
                     },
                     intent: "CAPTURE",
                     purchase_units: [{

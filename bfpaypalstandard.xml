@@ -2,7 +2,7 @@
 <extension type="plugin" version="3.9" method="upgrade" group="hikashoppayment">
 	<name>PLG_BFPAYPALSTANDARD_XML_TITLE</name>
 	<creationDate>29 June 2022</creationDate>
-	<version>0.0.1</version>
+	<version>1.0.0</version>
 	<author>Jonathan Brain</author>
 	<authorEmail>brainforge.uk@btinternet.com</authorEmail>
 	<authorUrl>http://www.brainforge.co.uk</authorUrl>

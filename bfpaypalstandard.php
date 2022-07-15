@@ -340,6 +340,12 @@ class plgHikashoppaymentBfpaypalstandard extends hikashopPaymentPlugin
 					$transaction = $data['purchase_units'][0]['payments']['captures'][0];
 					$history->history_data = Text::sprintf('PLG_BFPAYPALSTANDARD_ORDERHISTORY_TRANSACTIONID', $transaction['status'], $transaction['id']) . '<br/>';
 
+					if (!empty($data['payer']['email_address']))
+					{
+						$history->history_data .= Text::sprintf('PLG_BFPAYPALSTANDARD_ORDERHISTORY_PAIDBY',
+																	$data['payer']['email_address']) . '<br/>';
+					}
+
 					if ($transaction['final_capture'])
 					{
 						$history->history_data .= Text::_('PLG_BFPAYPALSTANDARD_ORDERHISTORY_TRANSACTIONFINAL') . '<br/>';
