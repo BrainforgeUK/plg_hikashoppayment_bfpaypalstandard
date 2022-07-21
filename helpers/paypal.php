@@ -286,15 +286,6 @@ class plgHikashoppaymentBfpaypalstandardHelper
 
 	/*
 	 */
-	public function onOrderCaptureMessage($message = 'PLG_BFPAYPALSTANDARD_PROCESSINGPAYMENT')
-	{
-		$message = str_replace("'", "&#39;", Text::_($message));
-
-		return "document.getElementById('bfpaypalstandard-end').innerHTML = '${message}';";
-	}
-
-	/*
-	 */
 	public function getNotifyUrl($action)
 	{
 		return $this->plugin->getNotifyUrl($action);
@@ -305,24 +296,5 @@ class plgHikashoppaymentBfpaypalstandardHelper
 	public function getBrandName()
 	{
 		return $this->plugin->app->get('sitename');
-	}
-
-	/*
-	 */
-	public function consoleLog($args, $alert=null)
-	{
-		$result = [];
-
-		if (!empty($alert))
-		{
-			$result[] = 'alert("' . str_replace('"', '\\"', Text::_($alert)) .'");';
-		}
-
-		if ($this->plugin_params->debug)
-		{
-			$result[] = 'console.log(' . implode(',', (array)$args) . ');';
-		}
-
-		return implode("\n", $result);
 	}
 }

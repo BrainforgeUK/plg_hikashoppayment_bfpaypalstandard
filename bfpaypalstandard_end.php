@@ -33,10 +33,11 @@ if (strpos($this->plugin_params->return_url, 'PLG_BFPAYPALSTANDARD_RETURNURL') =
     $cancelUrl = $this->getNotifyUrl('cancel');
     ?>
     <div id="bfpaypalstandard-cancel">
-        <a class="hikabtn hikacart"
-           href="<?php echo $cancelUrl; ?>"
-        >
-            <?php echo Text::_('PLG_BFPAYPALSTANDARD_CANCEL_ORDER'); ?>
+        <a href="<?php echo $cancelUrl; ?>">
+            <button class="hikabtn hikacart"
+                    style="width:fit-content;">
+				<?php echo Text::_('PLG_BFPAYPALSTANDARD_CANCEL_ORDER'); ?>
+            </button>
         </a>
     </div>
 

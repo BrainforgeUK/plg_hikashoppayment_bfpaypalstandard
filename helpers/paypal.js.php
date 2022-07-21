@@ -7,7 +7,7 @@
  * @license   GNU/GPLv3 http://www.gnu.org/licenses/gpl-3.0.html
  */
 
-defined('_JEXEC') or die('Restricted access');
+use Joomla\CMS\Language\Text;defined('_JEXEC') or die('Restricted access');
 
 /** @var plgHikashoppaymentBfpaypalstandardHelper $paypalHelper */
 
@@ -40,9 +40,6 @@ else
 		}
 	}
 }
-
-$shippingAddressInfo = $paypalHelper->getAddressInfo('shipping');
-
 ?>
 <div id="smart-button-container">
     <div style="text-align: center;">
@@ -55,6 +52,35 @@ $shippingAddressInfo = $paypalHelper->getAddressInfo('shipping');
 ></script>
 
 <script>
+    const textPaymentError      = '<?php echo Text::_('PLG_BFPAYPALSTANDARD_PAYMENTERROR'); ?>';
+    const textProcessingPayment = '<?php echo Text::_('PLG_BFPAYPALSTANDARD_PROCESSINGPAYMENT'); ?>';
+    const debug                 = <?php echo $paypalHelper->plugin_params->debug ?>;
+
+	<?php
+	$shippingAddressInfo = $paypalHelper->getAddressInfo('shipping');
+
+	if (empty($shippingAddressInfo))
+	{
+        ?>
+        const shipping_preference = 'NO_SHIPPING';
+        const shipping = { };
+        <?php
+    }
+    else
+	{
+	?>
+        const shipping_preference = 'SET_PROVIDED_ADDRESS';
+        const shipping = { address: { <?php echo implode(',', $shippingAddressInfo) ?> } };
+	<?php
+	}
+	?>
+
+    function consoleLog(err) {
+        if (debug) {
+            console.log(err);
+        }
+    }
+
     function initPayPalButtons() {
         paypal.Buttons({
             style: {
@@ -65,7 +91,7 @@ $shippingAddressInfo = $paypalHelper->getAddressInfo('shipping');
                 return actions.order.create({
                     application_context: {
                         brand_name: "<?php echo $paypalHelper->getBrandName(); ?>",
-                        shipping_preference: "<?php echo empty($shippingAddressInfo) ? 'NO_SHIPPING' : 'SET_PROVIDED_ADDRESS'; ?>",
+                        'shipping_preference': shipping_preference,
                     },
                     intent: "CAPTURE",
                     purchase_units: [{
@@ -74,14 +100,7 @@ $shippingAddressInfo = $paypalHelper->getAddressInfo('shipping');
                             currency_code:"<?php echo $paypalHelper->order->order_currency_info->currency_code;?>",
                             value:<?php echo $paypalHelper->order->order_full_price;?>
                         },
-                        <?php
-                        if (!empty($shippingAddressInfo))
-						{
-                            ?>
-                            shipping: { address: { <?php echo implode(',', $shippingAddressInfo) ?> } },
-                            <?php
-                        }
-                        ?>
+                        'shipping': shipping,
                                      }],
                 });
             },
@@ -89,10 +108,11 @@ $shippingAddressInfo = $paypalHelper->getAddressInfo('shipping');
             onApprove: function(data, actions) {
                 return actions.order.capture().then(function(orderData) {
 
-                    <?php echo $paypalHelper->consoleLog(array(
-                                            "'Capture result'", 'orderData', 'JSON.stringify(orderData, null, 2)')); ?>
+                    consoleLog('Capture result');
+                    consoleLog(orderData);
+                    consoleLog(JSON.stringify(orderData, null, 2));
 
-                    <?php echo $paypalHelper->onOrderCaptureMessage(); ?>
+                    document.getElementById('bfpaypalstandard-end').innerHTML = textProcessingPayment;
 
                     fetch('<?php echo $paypalHelper->getNotifyUrl('onApprove'); ?>' +
                                                     "&result=" + JSON.stringify(orderData)
@@ -112,14 +132,16 @@ $shippingAddressInfo = $paypalHelper->getAddressInfo('shipping');
                                 break;
                         }
                     }).catch(function (err) {
-						<?php echo $paypalHelper->consoleLog('err', 'PLG_BFPAYPALSTANDARD_PAYMENTERROR'); ?>
+                        consoleLog(err);
+                        alert(paymentError);
                     })
                     ;
                 });
             },
 
             onError: function(err) {
-				<?php echo $paypalHelper->consoleLog('err', 'PLG_BFPAYPALSTANDARD_PAYMENTERROR'); ?>
+                consoleLog(err);
+                alert(paymentError);
             }
         }).render('#paypal-button-container');
     }
