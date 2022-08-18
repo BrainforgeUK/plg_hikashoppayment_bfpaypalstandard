@@ -54,7 +54,8 @@ else
 <script>
     const textPaymentError      = '<?php echo Text::_('PLG_BFPAYPALSTANDARD_PAYMENTERROR'); ?>';
     const textProcessingPayment = '<?php echo Text::_('PLG_BFPAYPALSTANDARD_PROCESSINGPAYMENT'); ?>';
-    const debug                 = <?php echo $paypalHelper->plugin_params->debug ?>;
+    // Ensure these are a valid value to guard against Javascript errors
+    const debug                 = <?php echo intval($paypalHelper->plugin_params->debug); ?>;
 
 	<?php
 	$shippingAddressInfo = $paypalHelper->getAddressInfo('shipping');
